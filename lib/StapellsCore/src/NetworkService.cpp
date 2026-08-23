@@ -44,7 +44,15 @@ void NetworkService::startSetupAccessPoint() {
 }
 
 void NetworkService::loop() {
-  if (stationConnected()) return;
+  if (stationConnected()) {
+    if (apActive_) {
+      WiFi.softAPdisconnect(true);
+      apActive_ = false;
+      WiFi.mode(WIFI_STA);
+      Serial.println(F("[wifi] Setup AP stopped"));
+    }
+    return;
+  }
   const uint32_t now = millis();
 
   if (!config_ || !config_->hasWifi()) {
@@ -71,3 +79,4 @@ String NetworkService::ipAddress() const {
 int32_t NetworkService::rssi() const { return stationConnected() ? WiFi.RSSI() : 0; }
 
 }  // namespace stapells
+
