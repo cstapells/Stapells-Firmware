@@ -24,7 +24,7 @@ void Core::begin() {
 
   network_.begin(configStore_.config(), platform_.boardId);
   mqtt_.begin(configStore_.config(), platform_.boardId, onMqttMessage);
-  web_.begin(statusJson, saveConfigJson, reboot, factoryReset, otaStart, otaEnd);
+  web_.begin(statusJson);
   started_ = true;
   updateState();
 }
@@ -46,7 +46,7 @@ void Core::loop() {
 }
 
 void Core::updateState() {
-  if (otaInProgress_ || faultLatched_) return;
+  if (faultLatched_) return;
   NodeState next;
   if (!configStore_.config().hasWifi()) next = NodeState::Unconfigured;
   else if (!network_.stationConnected()) next = NodeState::ConnectingWifi;
@@ -127,7 +127,6 @@ String Core::statusJson() {
   doc["state"] = instance_->stateName();
   doc["ip"] = instance_->network_.ipAddress();
   doc["rssi"] = instance_->network_.rssi();
-  doc["setupAp"] = instance_->network_.setupAccessPointActive();
   doc["mqttConnected"] = instance_->mqtt_.connected();
   doc["configured"] = instance_->configStore_.config().isComplete();
   doc["freeHeap"] = freeHeap();
@@ -160,10 +159,6 @@ void Core::handleMqttMessage(const String& topic, const String& payload) {
   else if (topic.endsWith("/command/status")) publishStatus(true);
 }
 
-bool Core::saveConfigJson(const String& body, String& error) {
-  return instance_ && instance_->configStore_.updateFromJson(body, error);
-}
-
 void Core::reboot() {
   delay(100);
   restartPlatform();
@@ -172,23 +167,6 @@ void Core::reboot() {
 void Core::factoryReset() {
   if (instance_) instance_->configStore_.factoryReset();
   reboot();
-}
-
-void Core::otaStart() {
-  if (!instance_) return;
-  instance_->otaInProgress_ = true;
-  instance_->setState(NodeState::Updating);
-  instance_->mqtt_.publish("status/update", "started", false);
-}
-
-void Core::otaEnd(bool success) {
-  if (!instance_) return;
-  instance_->mqtt_.publish("status/update", success ? "succeeded" : "failed", false);
-  if (!success) {
-    instance_->otaInProgress_ = false;
-    instance_->faultLatched_ = true;
-    instance_->setState(NodeState::Fault);
-  }
 }
 
 }  // namespace stapells
