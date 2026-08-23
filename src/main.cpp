@@ -2,10 +2,8 @@
 #include <StapellsCore.h>
 
 namespace {
-
 stapells::Core core;
-
-}  // namespace
+}
 
 void setup() {
   Serial.begin(115200);
