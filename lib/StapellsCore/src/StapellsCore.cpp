@@ -24,7 +24,7 @@ void Core::begin() {
 
   network_.begin(configStore_.config(), platform_.boardId);
   mqtt_.begin(configStore_.config(), platform_.boardId, onMqttMessage);
-  web_.begin(statusJson, saveConfigJson, reboot, factoryReset);
+  web_.begin(statusJson, saveConfigJson, reboot, factoryReset, otaStart, otaEnd);
   started_ = true;
   updateState();
 }
@@ -46,6 +46,7 @@ void Core::loop() {
 }
 
 void Core::updateState() {
+  if (otaInProgress_ || faultLatched_) return;
   NodeState next;
   if (!configStore_.config().hasWifi()) next = NodeState::Unconfigured;
   else if (!network_.stationConnected()) next = NodeState::ConnectingWifi;
@@ -173,4 +174,22 @@ void Core::factoryReset() {
   reboot();
 }
 
+void Core::otaStart() {
+  if (!instance_) return;
+  instance_->otaInProgress_ = true;
+  instance_->setState(NodeState::Updating);
+  instance_->mqtt_.publish("status/update", "started", false);
+}
+
+void Core::otaEnd(bool success) {
+  if (!instance_) return;
+  instance_->mqtt_.publish("status/update", success ? "succeeded" : "failed", false);
+  if (!success) {
+    instance_->otaInProgress_ = false;
+    instance_->faultLatched_ = true;
+    instance_->setState(NodeState::Fault);
+  }
+}
+
 }  // namespace stapells
+
