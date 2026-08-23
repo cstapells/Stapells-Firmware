@@ -3,9 +3,12 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 
+#include "stapells/SiteDefaults.h"
+
 namespace stapells {
 
 bool ConfigStore::begin() {
+  applySiteDefaults(config_);
   mounted_ = LittleFS.begin();
   if (!mounted_) {
     Serial.println(F("[core] LittleFS mount failed"));
@@ -97,3 +100,4 @@ bool ConfigStore::factoryReset() {
 }
 
 }  // namespace stapells
+
