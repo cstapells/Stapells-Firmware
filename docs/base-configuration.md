@@ -1,31 +1,46 @@
-# Base configuration and management
+# Base site configuration and management
 
-## First boot
+## Current development configuration
 
-Without stored Wi-Fi settings, Base creates an open setup network named
-`Stapells-XXXX`, where `XXXX` is the friendly board ID. Open `http://192.168.4.1/`
-while connected to that network.
+Base connects only as a station to the Stapells Junction layout Wi-Fi. It never
+creates an access point and has no captive portal.
 
-The setup page stores Core configuration in LittleFS and restarts the node. If a
-configured station cannot connect within 15 seconds, the setup access point is
-also enabled while station retries continue in the background.
+Development site values pass through `stapells/SiteDefaults.h`. The current
+compile-time fields are:
+
+- `STAPELLS_WIFI_SSID`
+- `STAPELLS_WIFI_PASSWORD`
+- `STAPELLS_MQTT_HOST` (currently defaults to `192.168.2.60`)
+- `STAPELLS_HEALTH_LED_PIN`
+
+They can be supplied as PlatformIO build definitions or temporarily placed in
+`SiteDefaults.h`. Function cards and network code must never read these macros
+directly; they consume `CoreConfig`, which keeps the future credential source a
+drop-in replacement.
+
+The repository intentionally contains no real Wi-Fi password. The existing
+layout values should be inserted locally for a hardware build and must not be
+printed in build logs.
+
+## Future credential source
+
+Stapells Junction will later designate SSID and password through a controlled
+provisioning/deployment workflow. That implementation will populate the same
+`CoreConfig` fields, leaving NetworkService and function cards unchanged.
 
 ## HTTP surface
 
-- `GET /` — Base management and configuration page
+- `GET /` — read-only Base diagnostics page
 - `GET /api/status` — identity, connectivity, state, heap, and uptime JSON
-- `POST /api/config` — replace supplied Core settings and restart
-- `POST /api/reboot` — restart
-- `POST /api/factory-reset` — erase Core configuration and restart
-- `GET /update` — ElegantOTA firmware update page
 
-Configuration JSON fields are `wifiSsid`, `wifiPassword`, `mqttHost`,
-`mqttPort`, `mqttUsername`, `mqttPassword`, `topicRoot`, `nodeName`,
-`healthLedPin`, and `healthBrightness`.
+There are no web endpoints for configuration, restart, reset, or firmware upload.
 
-The setup access point is intentionally open in this development milestone so a
-new board can always be recovered. Authentication and physical-presence policy
-must be selected before a production release.
+## Firmware deployment
+
+ElegantOTA is not part of Stapells Base. Firmware deployment and return-to-Base
+will be implemented as a controller-owned service with a narrow Core transport
+interface. USB remains the initial flashing and recovery mechanism until that
+service is delivered.
 
 ## MQTT surface
 
@@ -44,14 +59,14 @@ Subscribed commands:
 
 - `command/status` — publish status immediately
 - `command/reboot` — restart the node
-- `command/factory-reset` — erase Core configuration only when payload is `CONFIRM`
+- `command/factory-reset` — erase stored Core overrides only when payload is `CONFIRM`
 
-Function-card topics will be specified separately and must not change these Core
+Function-card topics are specified separately and cannot change these Core
 management topics.
 
 ## Security boundary
 
 This development Base assumes a trusted layout network. MQTT transport security,
-HTTP authentication, signed firmware, setup-AP protection, and command
-authorization are explicit production-hardening tasks rather than hidden claims
-of this milestone.
+credential provisioning, signed firmware, and command authorization remain
+explicit production-hardening work.
+
