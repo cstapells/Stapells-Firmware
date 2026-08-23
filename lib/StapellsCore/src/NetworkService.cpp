@@ -18,12 +18,12 @@ void NetworkService::begin(const CoreConfig& config, const String& boardId) {
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
   if (config.hasWifi()) connectStation();
-  else startSetupAccessPoint();
+  else Serial.println(F("[wifi] No site Wi-Fi configured in SiteDefaults"));
 }
 
 void NetworkService::connectStation() {
   if (!config_ || !config_->hasWifi()) return;
-  WiFi.mode(apActive_ ? WIFI_AP_STA : WIFI_STA);
+  WiFi.mode(WIFI_STA);
 #if defined(ESP8266)
   WiFi.hostname((String("stapells-") + boardId_).c_str());
 #else
@@ -35,36 +35,18 @@ void NetworkService::connectStation() {
   Serial.printf("[wifi] Connecting to %s\n", config_->wifiSsid.c_str());
 }
 
-void NetworkService::startSetupAccessPoint() {
-  if (apActive_) return;
-  const String ssid = String("Stapells-") + boardId_;
-  WiFi.mode(WIFI_AP_STA);
-  apActive_ = WiFi.softAP(ssid.c_str());
-  if (apActive_) Serial.printf("[wifi] Setup AP %s at %s\n", ssid.c_str(), WiFi.softAPIP().toString().c_str());
-}
-
 void NetworkService::loop() {
-  if (stationConnected()) {
-    if (apActive_) {
-      WiFi.softAPdisconnect(true);
-      apActive_ = false;
-      WiFi.mode(WIFI_STA);
-      Serial.println(F("[wifi] Setup AP stopped"));
-    }
-    return;
-  }
+  if (stationConnected()) return;
   const uint32_t now = millis();
 
   if (!config_ || !config_->hasWifi()) {
-    startSetupAccessPoint();
     return;
   }
 
   if (attemptStartedMs_ != 0 && now - attemptStartedMs_ >= kConnectTimeoutMs) {
     attemptStartedMs_ = 0;
     nextAttemptMs_ = now + kRetryDelayMs;
-    startSetupAccessPoint();
-    Serial.println(F("[wifi] Station timeout; setup AP remains available"));
+    Serial.println(F("[wifi] Station timeout; retrying site Wi-Fi"));
   }
 
   if (attemptStartedMs_ == 0 && static_cast<int32_t>(now - nextAttemptMs_) >= 0) connectStation();
@@ -73,7 +55,7 @@ void NetworkService::loop() {
 bool NetworkService::stationConnected() const { return WiFi.status() == WL_CONNECTED; }
 
 String NetworkService::ipAddress() const {
-  return stationConnected() ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
+  return stationConnected() ? WiFi.localIP().toString() : String();
 }
 
 int32_t NetworkService::rssi() const { return stationConnected() ? WiFi.RSSI() : 0; }
