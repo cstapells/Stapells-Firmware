@@ -1,0 +1,11 @@
+{
+  "name": "StapellsCore",
+  "version": "0.1.0",
+  "description": "Shared management services for every Stapells Junction firmware image",
+  "keywords": ["stapells", "esp8266", "esp32", "mqtt", "ota"],
+  "frameworks": ["arduino"],
+  "platforms": ["espressif8266", "espressif32"],
+  "build": {
+    "includeDir": "include"
+  }
+}
