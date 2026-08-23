@@ -9,8 +9,9 @@ The sensor card will prove the extension boundary with:
 - configurable GPIO, active level, debounce, sensor ID, and MQTT mapping;
 - all assignments held as runtime configuration;
 - activity reported through `Core::activity()`;
-- no direct Wi-Fi, MQTT, OTA, filesystem, or health-strip ownership;
+- no direct Wi-Fi, MQTT, deployment, filesystem, or health-strip ownership;
 - operation continuing from stored configuration during controller or MQTT loss.
 
 Once that path is stable, I/O expander and additional sensor types can reuse the
 same card contract.
+
