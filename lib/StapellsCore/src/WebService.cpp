@@ -7,11 +7,14 @@ namespace stapells {
 WebService::WebService() : server_(80) {}
 
 void WebService::begin(StatusProvider statusProvider, ConfigWriter configWriter,
-                       VoidAction rebootAction, VoidAction factoryResetAction) {
+                       VoidAction rebootAction, VoidAction factoryResetAction,
+                       VoidAction otaStartAction, BoolAction otaEndAction) {
   statusProvider_ = statusProvider;
   configWriter_ = configWriter;
   rebootAction_ = rebootAction;
   factoryResetAction_ = factoryResetAction;
+  otaStartAction_ = otaStartAction;
+  otaEndAction_ = otaEndAction;
 
   server_.on("/", HTTP_GET, [this]() { sendHome(); });
   server_.on("/api/status", HTTP_GET, [this]() { sendStatus(); });
@@ -29,6 +32,12 @@ void WebService::begin(StatusProvider statusProvider, ConfigWriter configWriter,
   server_.onNotFound([this]() { server_.send(404, "application/json", "{\"error\":\"not found\"}"); });
 
   ElegantOTA.begin(&server_);
+  ElegantOTA.onStart([this]() {
+    if (otaStartAction_) otaStartAction_();
+  });
+  ElegantOTA.onEnd([this](bool success) {
+    if (otaEndAction_) otaEndAction_(success);
+  });
   server_.begin();
   Serial.println(F("[web] Status and OTA server started"));
 }
@@ -88,3 +97,4 @@ restart.onclick=()=>req('/api/reboot',{method:'POST'});reset.onclick=()=>confirm
 }
 
 }  // namespace stapells
+
