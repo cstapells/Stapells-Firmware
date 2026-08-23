@@ -39,6 +39,8 @@ class Core {
   static bool saveConfigJson(const String& body, String& error);
   static void reboot();
   static void factoryReset();
+  static void otaStart();
+  static void otaEnd(bool success);
 
   void handleMqttMessage(const String& topic, const String& payload);
   void updateState();
@@ -55,7 +57,10 @@ class Core {
   NodeState state_{NodeState::Booting};
   bool started_{false};
   bool timeStarted_{false};
+  bool otaInProgress_{false};
+  bool faultLatched_{false};
   uint32_t lastStatusMs_{0};
 };
 
 }  // namespace stapells
+
