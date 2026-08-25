@@ -21,7 +21,7 @@ class MqttService {
   void begin(const CoreConfig& config, const String& boardId,
              MqttMessageHandler handler);
   void loop(bool networkReady);
-  bool connected() const { return client_.connected(); }
+  bool connected() { return client_.connected(); }
   bool publish(const String& suffix, const String& payload, bool retained = false);
   String topic(const String& suffix) const;
 
