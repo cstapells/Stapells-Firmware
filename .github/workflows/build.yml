@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   platformio:
     runs-on: ubuntu-latest
@@ -21,7 +24,70 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Install PlatformIO
-        run: pip install --disable-pip-version-check platformio
+      - name: Install PlatformIO and esptool
+        run: pip install --disable-pip-version-check platformio esptool
       - name: Build ${{ matrix.environment }}
         run: pio run -e ${{ matrix.environment }}
+      - name: Package factory image
+        shell: bash
+        run: |
+          set -euo pipefail
+          environment="${{ matrix.environment }}"
+          build_dir=".pio/build/${environment}"
+          output="stapells-${environment}.bin"
+          mkdir -p dist
+
+          if [[ "${environment}" == "esp8266-d1-mini" ]]; then
+            cp "${build_dir}/firmware.bin" "dist/${output}"
+            exit 0
+          fi
+
+          chip="esp32"
+          bootloader_offset="0x1000"
+          if [[ "${environment}" == "esp32-c3" ]]; then
+            chip="esp32c3"
+            bootloader_offset="0x0"
+          elif [[ "${environment}" == "esp32-s3" ]]; then
+            chip="esp32s3"
+            bootloader_offset="0x0"
+          fi
+
+          boot_app0="$(find "$HOME/.platformio/packages/framework-arduinoespressif32" -name boot_app0.bin -print -quit)"
+          test -n "${boot_app0}"
+
+          python -m esptool --chip "${chip}" merge-bin             -o "dist/${output}"             "${bootloader_offset}" "${build_dir}/bootloader.bin"             0x8000 "${build_dir}/partitions.bin"             0xe000 "${boot_app0}"             0x10000 "${build_dir}/firmware.bin"
+      - name: Retain factory image
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.environment }}
+          path: dist/stapells-${{ matrix.environment }}.bin
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-latest:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: platformio
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download factory images
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish rolling latest release
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="firmware-latest"
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh api --method PATCH               "repos/${GITHUB_REPOSITORY}/git/refs/tags/${tag}"               -f sha="${GITHUB_SHA}"               -F force=true >/dev/null
+            gh release edit "${tag}"               --title "Latest Stapells firmware"               --notes "Automated factory images from main at ${GITHUB_SHA}."
+          else
+            gh release create "${tag}"               --target "${GITHUB_SHA}"               --title "Latest Stapells firmware"               --notes "Automated factory images from main at ${GITHUB_SHA}."               --prerelease
+          fi
+
+          gh release upload "${tag}" dist/*.bin --clobber
