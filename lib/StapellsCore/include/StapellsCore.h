@@ -11,6 +11,8 @@
 
 namespace stapells {
 
+using FunctionMessageHandler = void (*)(const String&, const String&);
+
 enum class NodeState : uint8_t {
   Booting,
   ConnectingWifi,
@@ -31,6 +33,8 @@ class Core {
   NodeState state() const { return state_; }
   const PlatformInfo& platform() const { return platform_; }
   const CoreConfig& config() const { return configStore_.config(); }
+  MqttService& mqtt() { return mqtt_; }
+  void setFunctionMessageHandler(FunctionMessageHandler handler) { functionMessageHandler_ = handler; }
 
  private:
   static Core* instance_;
@@ -56,6 +60,7 @@ class Core {
   bool timeStarted_{false};
   bool faultLatched_{false};
   uint32_t lastStatusMs_{0};
+  FunctionMessageHandler functionMessageHandler_{nullptr};
 };
 
 }  // namespace stapells

@@ -61,6 +61,7 @@ void MqttService::connect() {
   }
 
   Serial.println(F("[mqtt] Connected"));
+  ++connectionCount_;
   publish("status/online", "true", true);
   const String commands = topic("command/#");
   client_.subscribe(commands.c_str());
@@ -70,6 +71,17 @@ bool MqttService::publish(const String& suffix, const String& payload, bool reta
   if (!client_.connected()) return false;
   const String fullTopic = topic(suffix);
   return client_.publish(fullTopic.c_str(), payload.c_str(), retained);
+}
+
+bool MqttService::publishTopic(const String& fullTopic, const String& payload,
+                               bool retained) {
+  if (!client_.connected()) return false;
+  return client_.publish(fullTopic.c_str(), payload.c_str(), retained);
+}
+
+bool MqttService::subscribe(const String& fullTopic) {
+  if (!client_.connected()) return false;
+  return client_.subscribe(fullTopic.c_str());
 }
 
 void MqttService::callback(char* incomingTopic, uint8_t* payload, unsigned int length) {

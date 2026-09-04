@@ -157,6 +157,7 @@ void Core::handleMqttMessage(const String& topic, const String& payload) {
   if (topic.endsWith("/command/reboot")) reboot();
   else if (topic.endsWith("/command/factory-reset") && payload == "CONFIRM") factoryReset();
   else if (topic.endsWith("/command/status")) publishStatus(true);
+  if (functionMessageHandler_) functionMessageHandler_(topic, payload);
 }
 
 void Core::reboot() {

@@ -23,7 +23,10 @@ class MqttService {
   void loop(bool networkReady);
   bool connected() { return client_.connected(); }
   bool publish(const String& suffix, const String& payload, bool retained = false);
+  bool publishTopic(const String& fullTopic, const String& payload, bool retained = false);
+  bool subscribe(const String& fullTopic);
   String topic(const String& suffix) const;
+  uint32_t connectionCount() const { return connectionCount_; }
 
  private:
   static MqttService* instance_;
@@ -36,6 +39,7 @@ class MqttService {
   String boardId_{};
   MqttMessageHandler handler_{nullptr};
   uint32_t nextAttemptMs_{0};
+  uint32_t connectionCount_{0};
 };
 
 }  // namespace stapells

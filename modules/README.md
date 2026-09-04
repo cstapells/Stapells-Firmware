@@ -11,3 +11,25 @@ Rules:
 3. Module presence is a build-time capability decision. Operational values such as turnout endpoints, sensor IDs, thresholds, labels, and MQTT mappings are runtime configuration.
 4. Modules signal activity through Core and do not control the mandatory health strip.
 5. Modules contain no irreplaceable desired-state data.
+
+## Implemented foundation
+
+`StapellsFunctions` now provides the common runtime and module interface. The
+first production module is `TURNOUT_SERVO`, using a PCA9685 and optional paired
+PCF8574 frog outputs.
+
+The servo module deliberately preserves the installed-layout MQTT contract:
+
+- `track/turnouts/<id>` is `CLOSED` or `THROWN`.
+- `/min` is the closed calibration and `/max` is the thrown calibration; their
+  numeric values are never reordered.
+- `/board`, `/channel`, and `/frog` assign hardware explicitly. The legacy
+  `Control/<board-id>_Servos` comma-separated list remains a fallback.
+- `Control/<board-id>_Type=SERVO` and a `TURNOUT_SERVO` entry in
+  `Control/<board-id>_Functions` both enable the module.
+
+On startup a servo output remains untouched until board ownership, channel,
+both endpoints, and retained state are known. Because physical position cannot
+be read after a reboot, the first complete retained state is applied directly;
+later state changes retain the legacy count-by-count travel at 42 Hz. Frog
+polarity changes only after the servo reaches its endpoint.
