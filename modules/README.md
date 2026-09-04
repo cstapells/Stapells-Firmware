@@ -15,8 +15,8 @@ Rules:
 ## Implemented foundation
 
 `StapellsFunctions` now provides the common runtime and module interface. The
-first production module is `TURNOUT_SERVO`, using a PCA9685 and two required
-PCF8574 frog-output boards.
+first production module is `TURNOUT_SERVO`, using a PCA9685 and one or two
+configured PCF8574 frog-output boards.
 
 The servo module deliberately preserves the installed-layout MQTT contract:
 
@@ -28,9 +28,13 @@ The servo module deliberately preserves the installed-layout MQTT contract:
 - `Control/<board-id>_Type=SERVO` and a `TURNOUT_SERVO` entry in
   `Control/<board-id>_Functions` both enable the module.
 
+PCF8574 count and addresses come from the board's retained `_Modules` array.
+One PCF8574 at `0x20` remains the legacy default. Each configured module can use
+any valid PCF8574 address from `0x20` through `0x27`.
+
 On startup a servo output remains untouched until board ownership, channel,
-frog assignment, both endpoints, and retained state are known. Movement is
-locked if either required PCF8574 is missing. Because physical position cannot
+frog assignment, both endpoints, and retained state are known. A turnout is
+locked if the PCF8574 serving its frog output is absent. Because physical position cannot
 be read after a reboot, the first complete retained state is applied directly;
 later state changes retain the legacy count-by-count travel at 42 Hz. Frog
 polarity changes only after the servo reaches its endpoint.

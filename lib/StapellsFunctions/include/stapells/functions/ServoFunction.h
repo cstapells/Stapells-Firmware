@@ -24,6 +24,7 @@ class ServoFunction final : public FunctionModule {
   bool owns(const Turnout&) const;
   bool listOwns(int id) const;
   void readList(const String&);
+  void readModules(const String&);
   void enableHardware();
   void update(Turnout&);
   void finish(Turnout&);
@@ -33,8 +34,11 @@ class ServoFunction final : public FunctionModule {
   Turnout turnouts_[kTurnoutCapacity]{};
   int ownedIds_[kChannelCapacity]{};
   uint8_t ownedCount_{0};
-  bool enabled_{false}, hardwareReady_{false}, pcf1Ready_{false}, pcf2Ready_{false};
+  bool enabled_{false}, hardwareStarted_{false};
+  uint8_t frogBoardCount_{1};
+  uint8_t frogAddresses_[2]{0x20, 0x21};
+  bool pcfReady_[2]{false, false};
   Adafruit_PWMServoDriver pwm_{};
-  Adafruit_PCF8574 pcf1_{}, pcf2_{};
+  Adafruit_PCF8574 pcf_[2]{};
 };
 }  // namespace stapells

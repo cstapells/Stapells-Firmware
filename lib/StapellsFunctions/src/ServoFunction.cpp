@@ -1,4 +1,5 @@
 #include "stapells/functions/ServoFunction.h"
+#include <ArduinoJson.h>
 #include <Wire.h>
 #include "stapells/MqttService.h"
 
@@ -20,22 +21,45 @@ void ServoFunction::onConnected() {
 }
 
 void ServoFunction::enableHardware() {
-  if (hardwareReady_) return;
-  Wire.begin(); pwm_.begin(); pwm_.setPWMFreq(42);
-  pcf1Ready_ = pcf1_.begin(0x20, &Wire);
-  pcf2Ready_ = pcf2_.begin(0x21, &Wire);
-  if (pcf1Ready_) for (uint8_t pin = 0; pin < 8; ++pin) pcf1_.pinMode(pin, OUTPUT);
-  if (pcf2Ready_) for (uint8_t pin = 0; pin < 8; ++pin) pcf2_.pinMode(pin, OUTPUT);
-  hardwareReady_ = pcf1Ready_ && pcf2Ready_;
-  Serial.printf("[servo] PCA9685 42Hz; required frogs 0x20=%s 0x21=%s\n",
-                pcf1Ready_ ? "ready" : "missing", pcf2Ready_ ? "ready" : "missing");
+  if (!hardwareStarted_) {
+    Wire.begin(); pwm_.begin(); pwm_.setPWMFreq(42);
+    hardwareStarted_ = true;
+  }
+  bool allReady = frogBoardCount_ > 0;
+  for (uint8_t board = 0; board < frogBoardCount_; ++board) {
+    pcfReady_[board] = pcf_[board].begin(frogAddresses_[board], &Wire);
+    if (pcfReady_[board]) {
+      for (uint8_t pin = 0; pin < 8; ++pin) pcf_[board].pinMode(pin, OUTPUT);
+    } else {
+      allReady = false;
+    }
+    Serial.printf("[servo] Frog board %u at 0x%02X: %s\n", board + 1,
+                  frogAddresses_[board], pcfReady_[board] ? "ready" : "missing");
+  }
+  for (uint8_t board = frogBoardCount_; board < 2; ++board) pcfReady_[board] = false;
   const String statusTopic = String("Control/") + boardId_ + "/status/functions/servo";
-  mqtt_->publishTopic(statusTopic, hardwareReady_ ? "READY" : "FAULT_FROG_HARDWARE", true);
-  if (!hardwareReady_) {
-    Serial.println(F("[servo] Movement locked: both PCF8574 frog boards are required"));
+  mqtt_->publishTopic(statusTopic, allReady ? "READY" : "FAULT_FROG_HARDWARE", true);
+  for (auto& turnout : turnouts_) update(turnout);
+}
+
+void ServoFunction::readModules(const String& payload) {
+  JsonDocument document;
+  if (deserializeJson(document, payload) || !document.is<JsonArray>()) {
+    Serial.println(F("[servo] Invalid module configuration; keeping one PCF8574 at 0x20"));
     return;
   }
-  for (auto& turnout : turnouts_) update(turnout);
+  uint8_t count = 0;
+  for (JsonObject module : document.as<JsonArray>()) {
+    if (count >= 2 || String(module["type"] | "") != "PCF8574") continue;
+    String address = module["address"] | "0x20";
+    char* end = nullptr;
+    const long parsed = strtol(address.c_str(), &end, 0);
+    if (end == address.c_str() || *end != '\0' || parsed < 0x20 || parsed > 0x27) continue;
+    frogAddresses_[count++] = static_cast<uint8_t>(parsed);
+  }
+  frogBoardCount_ = count;
+  Serial.printf("[servo] Configured frog boards: %u\n", frogBoardCount_);
+  if (enabled_) enableHardware();
 }
 
 ServoFunction::Turnout* ServoFunction::get(int id) {
@@ -78,6 +102,7 @@ void ServoFunction::onMessage(const String& topic, const String& payload) {
     if (payload.indexOf("TURNOUT_SERVO") >= 0) { enabled_ = true; enableHardware(); }
     return;
   }
+  if (topic == control + "Modules") { readModules(payload); return; }
   if (topic == control + "Servos") { readList(payload); return; }
   if (!topic.startsWith(kRoot)) return;
 
@@ -115,7 +140,9 @@ void ServoFunction::onMessage(const String& topic, const String& payload) {
 }
 
 void ServoFunction::update(Turnout& turnout) {
-  if (!hardwareReady_ || !owns(turnout) || turnout.channel < 0 || turnout.frog < 0 ||
+  const int frogBoard = turnout.frog < 0 ? -1 : turnout.frog / 8;
+  if (!hardwareStarted_ || !owns(turnout) || turnout.channel < 0 ||
+      frogBoard < 0 || frogBoard >= frogBoardCount_ || !pcfReady_[frogBoard] ||
       !turnout.hasClosed || !turnout.hasThrown || !turnout.hasState) return;
   turnout.target = turnout.isThrown ? turnout.thrown : turnout.closed;
   if (!turnout.started) {
@@ -130,7 +157,7 @@ void ServoFunction::update(Turnout& turnout) {
 }
 
 void ServoFunction::loop(uint32_t now) {
-  if (!hardwareReady_) return;
+  if (!hardwareStarted_) return;
   for (auto& turnout : turnouts_) {
     if (!turnout.moving || static_cast<int32_t>(now - turnout.nextStep) < 0) continue;
     turnout.nextStep = now + kStepMs;
@@ -148,8 +175,9 @@ void ServoFunction::finish(Turnout& turnout) {
 
 void ServoFunction::setFrog(int frog, bool thrown) {
   if (frog < 0 || frog >= 16) return;
-  Adafruit_PCF8574* pcf = frog < 8 ? &pcf1_ : &pcf2_;
-  const bool ready = frog < 8 ? pcf1Ready_ : pcf2Ready_;
-  if (ready) pcf->digitalWrite(frog % 8, thrown ? LOW : HIGH);
+  const uint8_t board = frog / 8;
+  if (board < frogBoardCount_ && pcfReady_[board]) {
+    pcf_[board].digitalWrite(frog % 8, thrown ? LOW : HIGH);
+  }
 }
 }  // namespace stapells
