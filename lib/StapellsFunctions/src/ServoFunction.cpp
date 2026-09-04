@@ -22,13 +22,19 @@ void ServoFunction::onConnected() {
 void ServoFunction::enableHardware() {
   if (hardwareReady_) return;
   Wire.begin(); pwm_.begin(); pwm_.setPWMFreq(42);
-  hardwareReady_ = true;
   pcf1Ready_ = pcf1_.begin(0x20, &Wire);
   pcf2Ready_ = pcf2_.begin(0x21, &Wire);
   if (pcf1Ready_) for (uint8_t pin = 0; pin < 8; ++pin) pcf1_.pinMode(pin, OUTPUT);
   if (pcf2Ready_) for (uint8_t pin = 0; pin < 8; ++pin) pcf2_.pinMode(pin, OUTPUT);
-  Serial.printf("[servo] PCA9685 42Hz; frogs 0x20=%s 0x21=%s\n",
+  hardwareReady_ = pcf1Ready_ && pcf2Ready_;
+  Serial.printf("[servo] PCA9685 42Hz; required frogs 0x20=%s 0x21=%s\n",
                 pcf1Ready_ ? "ready" : "missing", pcf2Ready_ ? "ready" : "missing");
+  const String statusTopic = String("Control/") + boardId_ + "/status/functions/servo";
+  mqtt_->publishTopic(statusTopic, hardwareReady_ ? "READY" : "FAULT_FROG_HARDWARE", true);
+  if (!hardwareReady_) {
+    Serial.println(F("[servo] Movement locked: both PCF8574 frog boards are required"));
+    return;
+  }
   for (auto& turnout : turnouts_) update(turnout);
 }
 
@@ -109,7 +115,7 @@ void ServoFunction::onMessage(const String& topic, const String& payload) {
 }
 
 void ServoFunction::update(Turnout& turnout) {
-  if (!hardwareReady_ || !owns(turnout) || turnout.channel < 0 ||
+  if (!hardwareReady_ || !owns(turnout) || turnout.channel < 0 || turnout.frog < 0 ||
       !turnout.hasClosed || !turnout.hasThrown || !turnout.hasState) return;
   turnout.target = turnout.isThrown ? turnout.thrown : turnout.closed;
   if (!turnout.started) {
