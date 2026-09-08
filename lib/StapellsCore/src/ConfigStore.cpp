@@ -98,8 +98,17 @@ bool ConfigStore::updateFromJson(const String& body, String& error) {
     error = "WIFI_NAME_REQUIRED";
     return false;
   }
+  if (candidate.wifiSsid.length() > 32 || candidate.wifiPassword.length() > 63) {
+    error = "WIFI_SETTINGS_TOO_LONG";
+    return false;
+  }
   if (candidate.mqttHost.isEmpty()) {
     error = "MQTT_SERVER_REQUIRED";
+    return false;
+  }
+  if (candidate.mqttHost.length() > 128 || candidate.mqttUsername.length() > 64 ||
+      candidate.mqttPassword.length() > 128) {
+    error = "MQTT_SETTINGS_TOO_LONG";
     return false;
   }
   if (candidate.mqttPort == 0) {
@@ -107,6 +116,10 @@ bool ConfigStore::updateFromJson(const String& body, String& error) {
     return false;
   }
   if (candidate.topicRoot.isEmpty()) candidate.topicRoot = "Control";
+  if (candidate.topicRoot.length() > 64 || candidate.otaBaseUrl.length() > 160) {
+    error = "SERVER_SETTINGS_TOO_LONG";
+    return false;
+  }
   if (!candidate.otaBaseUrl.startsWith("http://") ||
       candidate.otaBaseUrl.indexOf(' ') >= 0) {
     error = "OTA_SERVER_INVALID";
