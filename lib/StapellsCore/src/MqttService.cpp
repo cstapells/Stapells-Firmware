@@ -44,15 +44,15 @@ void MqttService::loop(bool networkReady) {
 void MqttService::connect() {
   nextAttemptMs_ = millis() + kReconnectMs;
   const String clientId = String("stapells-") + boardId_;
-  const String willTopic = topic("status/online");
+  const String willTopic = config_->topicRoot + '/' + boardId_ + "_Status";
 
   bool ok;
   if (config_->mqttUsername.isEmpty()) {
-    ok = client_.connect(clientId.c_str(), willTopic.c_str(), 1, true, "false");
+    ok = client_.connect(clientId.c_str(), willTopic.c_str(), 1, true, "OFFLINE");
   } else {
     ok = client_.connect(clientId.c_str(), config_->mqttUsername.c_str(),
                          config_->mqttPassword.c_str(), willTopic.c_str(), 1,
-                         true, "false");
+                         true, "OFFLINE");
   }
 
   if (!ok) {
@@ -62,7 +62,7 @@ void MqttService::connect() {
 
   Serial.println(F("[mqtt] Connected"));
   ++connectionCount_;
-  publish("status/online", "true", true);
+  publishTopic(willTopic, "ONLINE", true);
   const String commands = topic("command/#");
   client_.subscribe(commands.c_str());
 }

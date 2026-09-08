@@ -1,6 +1,9 @@
 #pragma once
 #include <StapellsCore.h>
+#include "stapells/functions/DigitalSensorFunction.h"
+#include "stapells/functions/LightSensorFunction.h"
 #include "stapells/functions/ServoFunction.h"
+#include "stapells/functions/TofSensorFunction.h"
 namespace stapells {
 // Dispatches shared services to independently implemented function modules.
 class FunctionRuntime {
@@ -13,6 +16,9 @@ class FunctionRuntime {
   void connected();
   Core* core_{nullptr};
   ServoFunction servo_{};
+  DigitalSensorFunction digitalSensor_{};
+  LightSensorFunction lightSensor_{};
+  TofSensorFunction tofSensor_{};
   uint32_t seenConnectionCount_{0};
 };
 }  // namespace stapells

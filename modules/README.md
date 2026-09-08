@@ -18,6 +18,11 @@ Rules:
 first production module is `TURNOUT_SERVO`, using a PCA9685 and one or two
 configured PCF8574 frog-output boards.
 
+The implemented function modules are `TURNOUT_SERVO`, `DIGITAL_SENSOR`,
+`BH1750_SENSOR`, and `VL53L0X_SENSOR`. Sensor configuration follows the
+board-level contract in `docs/mqtt-strategy.md`; JMRI continues to consume only
+the established `track/sensors/<id>` `ACTIVE`/`INACTIVE` states.
+
 The servo module deliberately preserves the installed-layout MQTT contract:
 
 - `track/turnouts/<id>` is `CLOSED` or `THROWN`.
