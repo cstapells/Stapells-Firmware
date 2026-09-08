@@ -35,7 +35,9 @@ jobs:
           environment="${{ matrix.environment }}"
           build_dir=".pio/build/${environment}"
           output="stapells-${environment}.bin"
+          ota_output="stapells-${environment}-ota.bin"
           mkdir -p dist
+          cp "${build_dir}/firmware.bin" "dist/${ota_output}"
 
           if [[ "${environment}" == "esp8266-d1-mini" ]]; then
             cp "${build_dir}/firmware.bin" "dist/${output}"
@@ -60,7 +62,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.environment }}
-          path: dist/stapells-${{ matrix.environment }}.bin
+          path: |
+            dist/stapells-${{ matrix.environment }}.bin
+            dist/stapells-${{ matrix.environment }}-ota.bin
           if-no-files-found: error
           retention-days: 30
 

@@ -37,6 +37,7 @@ bool ConfigStore::load() {
   config_.mqttPort = doc["mqtt"]["port"] | 1883;
   config_.mqttUsername = doc["mqtt"]["username"] | "";
   config_.mqttPassword = doc["mqtt"]["password"] | "";
+  config_.otaBaseUrl = doc["ota"]["baseUrl"] | config_.otaBaseUrl;
   config_.topicRoot = doc["mqtt"]["topicRoot"] | "Control";
   config_.nodeName = doc["nodeName"] | "";
   config_.healthLedPin = doc["health"]["gpio"] | -1;
@@ -55,6 +56,7 @@ bool ConfigStore::save() {
   doc["mqtt"]["port"] = config_.mqttPort;
   doc["mqtt"]["username"] = config_.mqttUsername;
   doc["mqtt"]["password"] = config_.mqttPassword;
+  doc["ota"]["baseUrl"] = config_.otaBaseUrl;
   doc["mqtt"]["topicRoot"] = config_.topicRoot;
   doc["nodeName"] = config_.nodeName;
   doc["health"]["gpio"] = config_.healthLedPin;
@@ -82,6 +84,7 @@ bool ConfigStore::updateFromJson(const String& body, String& error) {
   if (doc["mqttUsername"].is<const char*>()) config_.mqttUsername = doc["mqttUsername"].as<String>();
   if (doc["mqttPassword"].is<const char*>()) config_.mqttPassword = doc["mqttPassword"].as<String>();
   if (doc["topicRoot"].is<const char*>()) config_.topicRoot = doc["topicRoot"].as<String>();
+  if (doc["otaBaseUrl"].is<const char*>()) config_.otaBaseUrl = doc["otaBaseUrl"].as<String>();
   if (doc["nodeName"].is<const char*>()) config_.nodeName = doc["nodeName"].as<String>();
   if (doc["healthLedPin"].is<int>()) config_.healthLedPin = doc["healthLedPin"].as<int>();
   if (doc["healthBrightness"].is<uint8_t>()) config_.healthBrightness = doc["healthBrightness"].as<uint8_t>();
@@ -91,6 +94,10 @@ bool ConfigStore::updateFromJson(const String& body, String& error) {
     return false;
   }
   if (config_.topicRoot.isEmpty()) config_.topicRoot = "Control";
+  if (!config_.otaBaseUrl.startsWith("http://")) {
+    error = "otaBaseUrl must use the trusted local HTTP server";
+    return false;
+  }
   return save();
 }
 

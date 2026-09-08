@@ -17,6 +17,10 @@
 #define STAPELLS_MQTT_HOST "192.168.2.60"
 #endif
 
+#ifndef STAPELLS_OTA_BASE_URL
+#define STAPELLS_OTA_BASE_URL "http://192.168.2.60:4173"
+#endif
+
 #ifndef STAPELLS_HEALTH_LED_PIN
 #define STAPELLS_HEALTH_LED_PIN -1
 #endif
@@ -28,6 +32,7 @@ inline void applySiteDefaults(CoreConfig& config) {
   config.wifiPassword = STAPELLS_WIFI_PASSWORD;
   config.mqttHost = STAPELLS_MQTT_HOST;
   config.mqttPort = 1883;
+  config.otaBaseUrl = STAPELLS_OTA_BASE_URL;
   config.topicRoot = "Control";
   config.healthLedPin = STAPELLS_HEALTH_LED_PIN;
 }

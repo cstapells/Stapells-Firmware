@@ -12,6 +12,7 @@ struct CoreConfig {
   String mqttUsername{};
   String mqttPassword{};
   String topicRoot{"Control"};
+  String otaBaseUrl{"http://192.168.2.60:4173"};
   String nodeName{};
   int healthLedPin{-1};
   uint8_t healthBrightness{24};

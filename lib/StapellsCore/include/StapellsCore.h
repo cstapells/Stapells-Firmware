@@ -6,6 +6,7 @@
 #include "stapells/HealthStrip.h"
 #include "stapells/MqttService.h"
 #include "stapells/NetworkService.h"
+#include "stapells/OtaService.h"
 #include "stapells/Platform.h"
 #include "stapells/WebService.h"
 
@@ -54,6 +55,7 @@ class Core {
   HealthStrip health_{};
   NetworkService network_{};
   MqttService mqtt_{};
+  OtaService ota_{};
   WebService web_{};
   NodeState state_{NodeState::Booting};
   bool started_{false};

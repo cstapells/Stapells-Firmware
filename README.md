@@ -47,7 +47,12 @@ PlatformIO environments are provided for the initial processor families:
 - ESP32-C3
 - ESP32-S3
 
-This initial scaffold defines the boundaries and lifecycle. Network, MQTT, OTA, persistence, and concrete LED drivers will be implemented behind the Core interfaces before production deployment.
+Core now includes guarded pull-based HTTP OTA for ESP8266 and ESP32-family
+targets. GitHub Actions publishes separate factory and OTA application images;
+the local Stapells server checks the physical board type and sends a
+non-retained, one-board MQTT request. A board accepts only an exact compiled
+target match and downloads from its provisioned local server URL. The first
+OTA-capable image must still be installed by USB.
 
 ## Design rule
 

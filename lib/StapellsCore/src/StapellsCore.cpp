@@ -24,6 +24,7 @@ void Core::begin() {
 
   network_.begin(configStore_.config(), platform_.boardId);
   mqtt_.begin(configStore_.config(), platform_.boardId, onMqttMessage);
+  ota_.begin(configStore_.config(), platform_, mqtt_);
   web_.begin(statusJson);
   started_ = true;
   updateState();
@@ -34,6 +35,10 @@ void Core::loop() {
   network_.loop();
   web_.loop();
   mqtt_.loop(network_.stationConnected());
+  if (ota_.pending() && network_.stationConnected()) {
+    setState(NodeState::Updating);
+    ota_.run(true);
+  }
   health_.loop();
 
   if (network_.stationConnected() && !timeStarted_) {
@@ -145,6 +150,10 @@ void Core::publishStatus(bool force) {
   mqtt_.publish("status/state", stateName(), true);
   mqtt_.publish("identity/platform", platform_.name, true);
   mqtt_.publish("identity/firmware", STAPELLS_FIRMWARE_VERSION, true);
+  mqtt_.publishTopic(configStore_.config().topicRoot + "/" + platform_.boardId + "_Version", STAPELLS_FIRMWARE_VERSION, true);
+  mqtt_.publishTopic(configStore_.config().topicRoot + "/" + platform_.boardId + "_BoardType", STAPELLS_BOARD_TARGET, true);
+  mqtt_.publishTopic(configStore_.config().topicRoot + "/" + platform_.boardId + "_IP", network_.ipAddress(), true);
+  mqtt_.publishTopic(configStore_.config().topicRoot + "/" + platform_.boardId + "_OtaCapable", "TRUE", true);
   mqtt_.publish("heartbeat", String(now / 1000UL), false);
 }
 
@@ -154,7 +163,8 @@ void Core::onMqttMessage(const String& topic, const String& payload) {
 
 void Core::handleMqttMessage(const String& topic, const String& payload) {
   activity();
-  if (topic.endsWith("/command/reboot")) reboot();
+  if (topic.endsWith("/command/update")) ota_.accept(payload);
+  else if (topic.endsWith("/command/reboot")) reboot();
   else if (topic.endsWith("/command/factory-reset") && payload == "CONFIRM") factoryReset();
   else if (topic.endsWith("/command/status")) publishStatus(true);
   if (functionMessageHandler_) functionMessageHandler_(topic, payload);
