@@ -85,6 +85,9 @@ as a migration input and is not published by new work.
 
 - Broker host, port, optional username, and password come from local
   provisioning rather than function source code.
+- Initial Wi-Fi, MQTT, and trusted OTA-server settings arrive through the
+  physically authorized USB installer and remain in the board's local storage.
+  Wi-Fi and MQTT credentials are never read from or published to MQTT.
 - Client ID is `stapells-<board>`.
 - Keep-alive is 30 seconds.
 - Reconnection is non-blocking and normally retried every five seconds.

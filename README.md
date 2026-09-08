@@ -54,6 +54,12 @@ non-retained, one-board MQTT request. A board accepts only an exact compiled
 target match and downloads from its provisioned local server URL. The first
 OTA-capable image must still be installed by USB.
 
+After that factory installation, the local browser installer sends Wi-Fi,
+MQTT, and the trusted OTA server address directly over the authorized USB
+serial connection. Core validates and stores those settings in LittleFS,
+acknowledges only the board ID (never a credential), and reboots. Site
+credentials are therefore absent from both the public firmware image and MQTT.
+
 ## Design rule
 
 > The ESP is disposable. The definition of what it does belongs to Stapells Junction.

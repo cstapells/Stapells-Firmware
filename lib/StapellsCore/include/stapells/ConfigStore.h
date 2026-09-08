@@ -19,7 +19,7 @@ struct CoreConfig {
 
   bool hasWifi() const { return !wifiSsid.isEmpty(); }
   bool hasMqtt() const { return !mqttHost.isEmpty(); }
-  bool isComplete() const { return hasWifi() && hasMqtt() && healthLedPin >= 0; }
+  bool isComplete() const { return hasWifi() && hasMqtt(); }
 };
 
 class ConfigStore {

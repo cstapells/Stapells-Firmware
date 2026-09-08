@@ -6,6 +6,8 @@
 namespace stapells {
 namespace {
 constexpr uint32_t kStatusIntervalMs = 30000;
+constexpr size_t kMaximumProvisioningLine = 1024;
+constexpr char kProvisioningPrefix[] = "STAPELLS_CONFIG ";
 }
 
 Core* Core::instance_ = nullptr;
@@ -28,10 +30,13 @@ void Core::begin() {
   web_.begin(statusJson);
   started_ = true;
   updateState();
+  Serial.printf("STAPELLS_READY %s %s\n", platform_.boardId.c_str(),
+                STAPELLS_BOARD_TARGET);
 }
 
 void Core::loop() {
   if (!started_) return;
+  handleSerialProvisioning();
   network_.loop();
   web_.loop();
   mqtt_.loop(network_.stationConnected());
@@ -48,6 +53,41 @@ void Core::loop() {
   updateState();
   publishStatus();
   platformYield();
+}
+
+void Core::handleSerialProvisioning() {
+  while (Serial.available()) {
+    const char value = static_cast<char>(Serial.read());
+    if (value == '\r') continue;
+    if (value == '\n') {
+      if (serialLine_.startsWith(kProvisioningPrefix)) {
+        applySerialConfiguration(serialLine_.substring(strlen(kProvisioningPrefix)));
+      }
+      serialLine_ = "";
+      continue;
+    }
+    if (value < 0x20 || value > 0x7E) continue;
+    if (serialLine_.length() >= kMaximumProvisioningLine) {
+      serialLine_ = "";
+      Serial.println(F("STAPELLS_CONFIG_ERROR MESSAGE_TOO_LONG"));
+      continue;
+    }
+    serialLine_ += value;
+  }
+}
+
+void Core::applySerialConfiguration(const String& payload) {
+  String error;
+  if (!configStore_.updateFromJson(payload, error)) {
+    Serial.print(F("STAPELLS_CONFIG_ERROR "));
+    Serial.println(error);
+    return;
+  }
+  Serial.print(F("STAPELLS_CONFIG_OK "));
+  Serial.println(platform_.boardId);
+  Serial.flush();
+  delay(300);
+  restartPlatform();
 }
 
 void Core::updateState() {

@@ -77,27 +77,42 @@ bool ConfigStore::updateFromJson(const String& body, String& error) {
     return false;
   }
 
-  if (doc["wifiSsid"].is<const char*>()) config_.wifiSsid = doc["wifiSsid"].as<String>();
-  if (doc["wifiPassword"].is<const char*>()) config_.wifiPassword = doc["wifiPassword"].as<String>();
-  if (doc["mqttHost"].is<const char*>()) config_.mqttHost = doc["mqttHost"].as<String>();
-  if (doc["mqttPort"].is<uint16_t>()) config_.mqttPort = doc["mqttPort"].as<uint16_t>();
-  if (doc["mqttUsername"].is<const char*>()) config_.mqttUsername = doc["mqttUsername"].as<String>();
-  if (doc["mqttPassword"].is<const char*>()) config_.mqttPassword = doc["mqttPassword"].as<String>();
-  if (doc["topicRoot"].is<const char*>()) config_.topicRoot = doc["topicRoot"].as<String>();
-  if (doc["otaBaseUrl"].is<const char*>()) config_.otaBaseUrl = doc["otaBaseUrl"].as<String>();
-  if (doc["nodeName"].is<const char*>()) config_.nodeName = doc["nodeName"].as<String>();
-  if (doc["healthLedPin"].is<int>()) config_.healthLedPin = doc["healthLedPin"].as<int>();
-  if (doc["healthBrightness"].is<uint8_t>()) config_.healthBrightness = doc["healthBrightness"].as<uint8_t>();
+  CoreConfig candidate = config_;
+  if (doc["wifiSsid"].is<const char*>()) candidate.wifiSsid = doc["wifiSsid"].as<String>();
+  if (doc["wifiPassword"].is<const char*>()) candidate.wifiPassword = doc["wifiPassword"].as<String>();
+  if (doc["mqttHost"].is<const char*>()) candidate.mqttHost = doc["mqttHost"].as<String>();
+  if (doc["mqttPort"].is<uint16_t>()) candidate.mqttPort = doc["mqttPort"].as<uint16_t>();
+  if (doc["mqttUsername"].is<const char*>()) candidate.mqttUsername = doc["mqttUsername"].as<String>();
+  if (doc["mqttPassword"].is<const char*>()) candidate.mqttPassword = doc["mqttPassword"].as<String>();
+  if (doc["topicRoot"].is<const char*>()) candidate.topicRoot = doc["topicRoot"].as<String>();
+  if (doc["otaBaseUrl"].is<const char*>()) candidate.otaBaseUrl = doc["otaBaseUrl"].as<String>();
+  if (doc["nodeName"].is<const char*>()) candidate.nodeName = doc["nodeName"].as<String>();
+  if (doc["healthLedPin"].is<int>()) candidate.healthLedPin = doc["healthLedPin"].as<int>();
+  if (doc["healthBrightness"].is<uint8_t>()) candidate.healthBrightness = doc["healthBrightness"].as<uint8_t>();
 
-  if (config_.mqttPort == 0) {
+  candidate.wifiSsid.trim();
+  candidate.mqttHost.trim();
+  candidate.otaBaseUrl.trim();
+  candidate.topicRoot.trim();
+  if (candidate.wifiSsid.isEmpty()) {
+    error = "WIFI_NAME_REQUIRED";
+    return false;
+  }
+  if (candidate.mqttHost.isEmpty()) {
+    error = "MQTT_SERVER_REQUIRED";
+    return false;
+  }
+  if (candidate.mqttPort == 0) {
     error = "mqttPort must be between 1 and 65535";
     return false;
   }
-  if (config_.topicRoot.isEmpty()) config_.topicRoot = "Control";
-  if (!config_.otaBaseUrl.startsWith("http://")) {
-    error = "otaBaseUrl must use the trusted local HTTP server";
+  if (candidate.topicRoot.isEmpty()) candidate.topicRoot = "Control";
+  if (!candidate.otaBaseUrl.startsWith("http://") ||
+      candidate.otaBaseUrl.indexOf(' ') >= 0) {
+    error = "OTA_SERVER_INVALID";
     return false;
   }
+  config_ = candidate;
   return save();
 }
 

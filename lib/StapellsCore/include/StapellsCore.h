@@ -45,6 +45,8 @@ class Core {
   static void factoryReset();
 
   void handleMqttMessage(const String& topic, const String& payload);
+  void handleSerialProvisioning();
+  void applySerialConfiguration(const String& payload);
   void updateState();
   void setState(NodeState state);
   void publishStatus(bool force = false);
@@ -62,6 +64,7 @@ class Core {
   bool timeStarted_{false};
   bool faultLatched_{false};
   uint32_t lastStatusMs_{0};
+  String serialLine_{};
   FunctionMessageHandler functionMessageHandler_{nullptr};
 };
 
