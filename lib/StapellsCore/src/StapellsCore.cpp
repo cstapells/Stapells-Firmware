@@ -40,6 +40,7 @@ void Core::loop() {
   network_.loop();
   web_.loop();
   mqtt_.loop(network_.stationConnected());
+  ota_.loop();
   if (ota_.pending() && network_.stationConnected()) {
     setState(NodeState::Updating);
     ota_.run(true);
