@@ -125,8 +125,22 @@ bool ConfigStore::updateFromJson(const String& body, String& error) {
     error = "OTA_SERVER_INVALID";
     return false;
   }
+  // Only initialize storage during an explicit physical USB configuration save.
+  // Never format a failed filesystem during an unattended boot or OTA restart.
+  if (!mounted_) {
+    if (!LittleFS.format() || !(mounted_ = LittleFS.begin())) {
+      error = "STORAGE_INIT_FAILED";
+      return false;
+    }
+  }
+  const CoreConfig previous = config_;
   config_ = candidate;
-  return save();
+  if (!save()) {
+    config_ = previous;
+    error = "STORAGE_SAVE_FAILED";
+    return false;
+  }
+  return true;
 }
 
 bool ConfigStore::factoryReset() {
